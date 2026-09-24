@@ -20,6 +20,8 @@ Keyboard controls are unchanged. No game file is modified.
 
 Freelook switches itself off whenever you leave the 3D view (options screen `O`, end of mission, menus). Press **Y** again when you are back in action.
 
+SHA-256 of `TNFreelook.exe` v1.0: `EF2FE445A82135F641A7E4BC2EEB003DF08044563AEF79F6966DC9348840E477`
+
 ## Settings
 
 `TNFreelook.ini` (created next to the exe on first run):
