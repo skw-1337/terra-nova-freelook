@@ -10,6 +10,14 @@ In the original game the mouse only moves an aiming cursor. This small external 
 
 Keyboard controls are unchanged. No game file is modified.
 
+**Works with the Steam version** (tested live) as well as GOG and standalone installs.
+
+## Demo video
+
+[![Terra Nova Mouse Freelook v1.0 — demo video](https://img.youtube.com/vi/YUgYPfcOk7U/maxresdefault.jpg)](https://www.youtube.com/watch?v=YUgYPfcOk7U)
+
+▶ [Watch the demo on YouTube](https://www.youtube.com/watch?v=YUgYPfcOk7U)
+
 ## Download & use
 
 1. Download `TerraNovaFreelook_v1.0.zip` from the [Releases](../../releases) page and unzip it anywhere.
@@ -40,12 +48,13 @@ The tool does **not** use fixed memory addresses. It locates the game inside the
 
 | Tested live | Emulator | Result |
 |---|---|---|
+| Steam release (Nightdive build, English exe) | DOSBox Staging (bundled) | ✅ |
 | GOG "Nightdive" build, French & English exe | DOSBox Staging (64-bit, 30 MB) | ✅ |
 | Standalone French v1.09 | DOSBox 0.74 (32-bit, 16 MB — every address shifted) | ✅ |
 
 Signatures verified (exactly one match each) in: English v1.08 (GOG/Steam CD image), English v1.09, French v1.09.
 Both in-game resolutions (320×200 and 320×400) are supported.
-Feedback welcome for the Steam release and DOSBox-X.
+Feedback welcome for DOSBox-X.
 
 ## Safety
 
@@ -83,5 +92,6 @@ When several matches exist (DOS/4GW can leave an unrelocated copy of the exe in 
 
 ### Français
 
-Vue à la souris pour *Terra Nova: Strike Force Centauri* (DOS, 1996) sous DOSBox — versions Steam, GOG ou autonome.
+Vue à la souris pour *Terra Nova: Strike Force Centauri* (DOS, 1996) sous DOSBox — versions Steam (testée), GOG ou autonome.
+Vidéo de démonstration : https://www.youtube.com/watch?v=YUgYPfcOk7U
 Lancer `TNFreelook.exe`, lancer le jeu, puis **Y** en mission : souris gauche/droite = tourner, haut/bas = regarder, réticule fixe au centre. Se coupe tout seul hors de la vue 3D. Réglages dans `TNFreelook.ini`. Aucun fichier du jeu n'est modifié ; code source fourni (`src/build.bat` pour recompiler, rien à installer).
