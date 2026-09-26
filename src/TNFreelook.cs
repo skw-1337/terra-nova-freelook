@@ -10,6 +10,11 @@
 //  - Only writes to fields identified from the game's own code (body heading,
 //    head pitch, mouse cursor). Automatically switches off outside the 3D view.
 //
+//  v1.1: no more periodic heading nudge (the view no longer shakes when standing
+//    still), 1 ms timer (smoother), game cursor frozen while active (no reticle
+//    trails on the cockpit), O / Esc switch it off, pointer kept inside the game
+//    window (dual screens).
+//
 //  Build (no install needed, uses the C# compiler shipped with Windows):
 //    C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /optimize
 //        /out:TNFreelook.exe TNFreelook.cs
@@ -25,7 +30,7 @@ using System.Threading;
 
 static class TNFreelook
 {
-    const string VERSION = "1.0";
+    const string VERSION = "1.1";
 
     // ------------------------------------------------------------------ settings
     static int SensX = 12;          // heading units per mouse count (65536 = 360 deg)
@@ -37,7 +42,8 @@ static class TNFreelook
     // limits used by the game itself for the head pitch
     const int PITCH_MIN = -7187, PITCH_MAX = 6127;
     const double CENTRE_Y = 0.36;   // centre of the 3D view = 36% of the cursor frame height
-    const int NUDGE = 32;           // liveness test heading offset (camera ignores < 16)
+    const int NUDGE = 32;           // activation test heading offset (camera ignores < 16)
+    const double BLIND = 1.5;       // mouse turned but camera frozen this long -> not in the 3D view
 
     // ------------------------------------------------------------------ signatures
     // "(....)" = captured absolute address, "...." = wildcard. Literal bytes are hex.
@@ -47,6 +53,8 @@ static class TNFreelook
         new[]{ "mouse",   "84d2 0f85 .... 803d (....) 00 7423 8b15 (....) a1 (....) c1fa10" },
         new[]{ "draw",    "8b15 (....) ff15 .... 30c9 880d ...." },
         new[]{ "frame",   "8b0424 8b15 (....) a3 (....) a1 ...." },
+        // mouse event handler: "cursor frozen" flag (motion events ignored, reticle not redrawn)
+        new[]{ "freeze",  "f6400401 0f84 .... 803d (....) 00 0f85 .... c605 .... 01" },
     };
     static readonly byte[] HAZE_TEXT = Encoding.ASCII.GetBytes("Memory trash: hazeRadius");
 
@@ -62,6 +70,15 @@ static class TNFreelook
     [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
     [DllImport("user32.dll")] static extern uint MapVirtualKey(uint code, uint type);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr hwnd, out RECT r);
+    [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr hwnd, ref POINT p);
+    [DllImport("user32.dll")] static extern bool ClipCursor(ref RECT r);
+    [DllImport("user32.dll", EntryPoint = "ClipCursor")] static extern bool ClipCursorOff(IntPtr none);
+    [DllImport("winmm.dll")] static extern uint timeBeginPeriod(uint ms);
+    [DllImport("kernel32.dll")] static extern bool SetConsoleCtrlHandler(CtrlHandler h, bool add);
+    delegate bool CtrlHandler(int ev);
+    [StructLayout(LayoutKind.Sequential)] struct RECT { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] struct POINT { public int X, Y; }
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out int pid);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr CreateWindowEx(uint exStyle, string cls, string name, uint style, int x, int y, int w, int h, IntPtr parent, IntPtr menu, IntPtr inst, IntPtr param);
     [DllImport("user32.dll")] static extern bool RegisterRawInputDevices(RAWINPUTDEVICE[] devs, uint n, uint size);
@@ -76,7 +93,9 @@ static class TNFreelook
     static IntPtr hProc = IntPtr.Zero;
     static int gamePid = 0;
     static long guestBase;          // host address of guest linear address 0
-    static uint aHazeText, aPlayerId, aMaster, aCamHeading, aPitch, aWarp, aCursor, aDraw, aFrame;
+    static uint aHazeText, aPlayerId, aMaster, aCamHeading, aPitch, aWarp, aCursor, aDraw, aFrame, aFreeze;
+    static bool frozen = false, clipped = false;
+    static CtrlHandler onClose;     // kept alive: releases the cursor if the window is closed
 
     static void Main(string[] args)
     {
@@ -85,14 +104,22 @@ static class TNFreelook
         Console.WriteLine("Terra Nova: Strike Force Centauri - Mouse Freelook " + VERSION);
         Console.WriteLine("Toggle key: " + KeyName() + "   (settings: TNFreelook.ini)");
         Console.WriteLine("Leave this window open. Start the game, enter a mission, press the toggle key.");
+        Console.WriteLine("Close it when you are done playing (it edits DOSBox's memory like a trainer:");
+        Console.WriteLine("quit it before playing online games protected by an anti-cheat).");
         Console.WriteLine();
         int vkToggle = (int)MapVirtualKey((uint)ToggleScan, 1);
+        int vkOptions = (int)MapVirtualKey(0x18, 1);   // O (options screen), same place on QWERTY/AZERTY
+        const int VK_ESCAPE = 0x1B;
         RawMouse mouse = new RawMouse();
+        timeBeginPeriod(1);                          // 1-2 ms sleeps instead of ~15.6 ms: smoother
+        onClose = ev => { Release(); return false; };
+        SetConsoleCtrlHandler(onClose, true);
 
         bool on = false, prevKey = false;
         uint entry = 0;
-        double lastCheck = 0, nudgeT = 0, lastAlive = 0;
-        byte[] nudgeCam = null;
+        double lastCheck = 0, lastMission = 0, pendingT = 0;
+        int pending = 0;                             // heading written since the camera last moved
+        byte[] camPrev = null;
         Stopwatch clock = Stopwatch.StartNew();
 
         while (true)
@@ -104,6 +131,7 @@ static class TNFreelook
                 if (hProc == IntPtr.Zero || !GameStillLoaded())
                 {
                     if (on) { on = false; Say("Freelook OFF (game closed)", 500); }
+                    frozen = false; Unclip();
                     if (now - lastCheck > 2) { lastCheck = now; TryAttach(); }
                     mouse.Take(); Thread.Sleep(50); continue;
                 }
@@ -115,9 +143,11 @@ static class TNFreelook
                     else
                     {
                         entry = PlayerEntry();
+                        // one-time check that the 3D view is live (tiny heading nudge, undone)
                         if (InMission(entry) && CameraAlive(entry))
                         {
-                            on = true; nudgeCam = null; lastAlive = now; mouse.Take();
+                            on = true; mouse.Take();
+                            camPrev = Read(aCamHeading, 2); pending = 0; lastMission = now;
                             Say("Freelook ON", 1200);
                         }
                         else Say("Not in a mission (3D view) - freelook refused", 300, 300);
@@ -127,28 +157,35 @@ static class TNFreelook
 
                 if (on)
                 {
-                    // liveness: the 3D camera must follow a small heading nudge, otherwise
-                    // we are in a menu / options screen / mission ended -> switch off
-                    if (nudgeCam == null && now - lastAlive > 0.5)
+                    // passive safety (no more periodic nudge: it made the view shake)
+                    if (fg && ((GetAsyncKeyState(vkOptions) & 0x8000) != 0 || (GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0))
+                    { on = false; Say("Freelook OFF (menu)", 500); }
+                    else if (now - lastMission > 0.25)
                     {
-                        nudgeCam = Read(aCamHeading, 2);
-                        AddHeading(entry, NUDGE);
-                        nudgeT = now;
+                        lastMission = now;
+                        if (!InMission(entry)) { on = false; Say("Freelook OFF (mission ended)", 500); }
                     }
-                    else if (nudgeCam != null)
+                    if (on)
                     {
                         byte[] cam = Read(aCamHeading, 2);
-                        if (cam[0] != nudgeCam[0] || cam[1] != nudgeCam[1])
-                        { AddHeading(entry, -NUDGE); nudgeCam = null; lastAlive = now; }
-                        else if (now - nudgeT > 1.5 || !InMission(entry))
-                        { AddHeading(entry, -NUDGE); nudgeCam = null; on = false; Say("Freelook OFF (left the 3D view)", 500); }
+                        if (cam[0] != camPrev[0] || cam[1] != camPrev[1]) { camPrev = cam; pending = 0; }
+                        else if (pending != 0 && now - pendingT > BLIND && Math.Abs(pending) > 64)
+                        {   // we kept turning but the 3D camera did not follow: not in the 3D view
+                            AddHeading(entry, -pending); pending = 0;
+                            on = false; Say("Freelook OFF (left the 3D view)", 500);
+                        }
                     }
                 }
 
                 int dx, dy; mouse.Take(out dx, out dy);
                 if (on && fg)
                 {
-                    if (dx != 0) AddHeading(entry, dx * SensX);
+                    if (dx != 0)
+                    {
+                        AddHeading(entry, dx * SensX);
+                        if (pending == 0) pendingT = now;
+                        pending += dx * SensX;
+                    }
                     if (dy != 0)
                     {
                         int p = BitConverter.ToInt16(Read(aPitch, 2), 0) + (InvertY ? -dy : dy) * SensY;
@@ -166,15 +203,46 @@ static class TNFreelook
                         Write(aDraw, c);             // where the reticle is drawn
                         Write(aWarp, new byte[] { 1 }); // mouse lib: push cursor to driver, skip reading the mouse
                     }
+                    // freeze the game cursor: its interrupt handler no longer moves/redraws the
+                    // reticle between two re-centrings (that left trails on the cockpit).
+                    // Clicks still work (queued before this test). Re-written: the game may clear it.
+                    Write(aFreeze, new byte[] { 1 }); frozen = true;
+                    Clip();                          // keep the Windows pointer inside the game window
+                }
+                else
+                {
+                    if (frozen) { Write(aFreeze, new byte[] { 0 }); frozen = false; }
+                    Unclip();
                 }
             }
             catch (Exception e)
             {
                 if (on) Say("Freelook OFF (" + e.Message + ")", 500);
-                on = false; Detach(); Thread.Sleep(500);
+                on = false; frozen = false; Unclip(); Detach(); Thread.Sleep(500);
             }
-            Thread.Sleep(4);
+            Thread.Sleep(2);
         }
+    }
+
+    // ------------------------------------------------------------------ cursor helpers
+    static void Clip()
+    {
+        IntPtr hwnd = GetForegroundWindow();       // the game window (checked by the caller)
+        RECT r; POINT p = new POINT();
+        if (!GetClientRect(hwnd, out r) || !ClientToScreen(hwnd, ref p)) return;
+        RECT zone = new RECT { Left = p.X, Top = p.Y, Right = p.X + r.Right, Bottom = p.Y + r.Bottom };
+        ClipCursor(ref zone); clipped = true;      // re-applied every loop (Windows may drop it)
+    }
+
+    static void Unclip()
+    {
+        if (clipped) { ClipCursorOff(IntPtr.Zero); clipped = false; }
+    }
+
+    static void Release()
+    {
+        try { if (frozen && hProc != IntPtr.Zero) Write(aFreeze, new byte[] { 0 }); } catch { }
+        frozen = false; ClipCursorOff(IntPtr.Zero); clipped = false;
     }
 
     // ------------------------------------------------------------------ game helpers
@@ -188,7 +256,7 @@ static class TNFreelook
     {
         double x = BitConverter.ToInt32(Read(entry + 0x0f, 4), 0) / 65536.0;
         double y = BitConverter.ToInt32(Read(entry + 0x13, 4), 0) / 65536.0;
-        return x >= 31 && x <= 481 && y >= 31 && y <= 481;
+        return x >= 2 && x <= 510 && y >= 2 && y <= 510;    // 0 outside a mission
     }
 
     static void AddHeading(uint entry, int delta)
@@ -348,14 +416,17 @@ static class TNFreelook
         Match mou = Best(Sig(SIGS[2][1]), mem);
         Match drw = Best(Sig(SIGS[3][1]), mem);
         Match frm = Best(Sig(SIGS[4][1]), mem);
-        if (cam == null || mou == null || drw == null || frm == null) return false;
+        Match frz = Best(Sig(SIGS[5][1]), mem);
+        if (cam == null || mou == null || drw == null || frm == null || frz == null) return false;
         aHazeText = strGuest;
         aPlayerId = Cap(cam, 1); aMaster = Cap(cam, 2); aCamHeading = Cap(cam, 4); aPitch = Cap(cam, 5);
         aWarp = Cap(mou, 1); aCursor = Cap(mou, 2);
         aDraw = Cap(drw, 1);
         aFrame = Cap(frm, 2);
+        aFreeze = Cap(frz, 1);
+        if (aFreeze != aWarp - 1) return false;      // same layout in every known version
         // sanity: every address must lie inside this memory region
-        foreach (uint a in new[] { aPlayerId, aMaster, aCamHeading, aPitch, aWarp, aCursor, aDraw, aFrame })
+        foreach (uint a in new[] { aPlayerId, aMaster, aCamHeading, aPitch, aWarp, aCursor, aDraw, aFrame, aFreeze })
         {
             long host = guestBase + a;
             if (host < regStart || host + 64 > regStart + buf.Length) return false;
