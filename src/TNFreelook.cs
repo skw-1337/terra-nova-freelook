@@ -17,7 +17,7 @@
 //
 //  Build (no install needed, uses the C# compiler shipped with Windows):
 //    C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /optimize
-//        /out:TNFreelook.exe TNFreelook.cs
+//        /win32manifest:app.manifest /win32icon:icon.ico /out:TNFreelook.exe TNFreelook.cs   (or run build.bat)
 // ============================================================================
 using System;
 using System.Collections.Generic;
@@ -27,10 +27,21 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Reflection;
+
+[assembly: AssemblyTitle("Terra Nova Freelook")]
+[assembly: AssemblyDescription("Mouse freelook for Terra Nova: Strike Force Centauri")]
+[assembly: AssemblyCompany("skw-1337")]
+[assembly: AssemblyProduct("Terra Nova Freelook")]
+[assembly: AssemblyCopyright("Copyright (c) 2026 skw-1337 - MIT License - github.com/skw-1337/terra-nova-freelook")]
+[assembly: AssemblyVersion("1.1.1.0")]
+[assembly: AssemblyFileVersion("1.1.1.0")]
+[assembly: AssemblyInformationalVersion("1.1.1")]
+[assembly: ComVisible(false)]
 
 static class TNFreelook
 {
-    const string VERSION = "1.1";
+    const string VERSION = "1.1.1";
 
     // ------------------------------------------------------------------ settings
     static int SensX = 12;          // heading units per mouse count (65536 = 360 deg)

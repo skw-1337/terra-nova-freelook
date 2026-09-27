@@ -30,7 +30,7 @@ Keyboard controls are unchanged. No game file is modified.
 
 ## Download & use
 
-1. Download `TerraNovaFreelook_v1.1.zip` from the [Releases](../../releases) page and unzip it anywhere.
+1. Download `TerraNovaFreelook_v1.1.1.zip` from the [Releases](../../releases) page and unzip it anywhere.
 2. Run **`TNFreelook.exe`** and leave its window open (it waits for the game).
 3. Start Terra Nova as usual. The window shows `Game found in ...`.
 4. In a mission, press **Y** to switch freelook on (high beep), **Y** again to switch it off.
@@ -38,7 +38,9 @@ Keyboard controls are unchanged. No game file is modified.
 
 Freelook switches itself off when you open the options screen (`O`) or press `Esc`, and when the mission ends. Press **Y** again when you are back in action.
 
-SHA-256 of `TNFreelook.exe` v1.1: `FE21C8F3F3B5B9B877221286BA3274046262658FD41A8DA54EBF7117FAF106AF`
+SHA-256 of `TNFreelook.exe` v1.1.1: `A65DF436A25216D669F91D796FFB709DDBF8D49CDAE47D040F395D0D3A164DAC`
+
+v1.1.1 only adds version info and an icon to the exe (fewer antivirus false alarms). The freelook itself is the same as v1.1.
 
 ## Settings
 
@@ -71,7 +73,13 @@ Feedback welcome for DOSBox-X.
 
 - It only changes, in the running game, values located from the game's own code: body heading, head pitch, the mouse cursor and the game's "cursor frozen" flag. Nothing is written until you press the toggle key during a mission, and it refuses outside the 3D view.
 - It switches off by itself in menus (`O`, `Esc`), when the mission ends, and if the 3D camera stops following your mouse — so it never writes into stale memory.
-- Because it reads/writes another program's memory, some antivirus software may flag it, like any game trainer. The full source is here: read it and build it yourself (below).
+- Because it reads/writes another program's memory, some antivirus software may flag it, like any game trainer: see below.
+
+## Antivirus warnings
+
+A few antivirus programs may flag the exe, mostly with "AI" or generic detections (Microsoft Defender finds nothing). It's a false positive: the tool reads and writes the game's memory and reads your keyboard and mouse, which is also what cheats and keyloggers do, and it's a small unsigned program that few people have run yet.
+
+The full source is in `src/`: you can read it and build the exe yourself with `build.bat` (nothing to install).
 
 ## Anti-cheat note
 
@@ -89,7 +97,7 @@ build.bat
 or manually:
 
 ```bat
-%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /optimize /out:TNFreelook.exe TNFreelook.cs
+%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /optimize /win32manifest:app.manifest /win32icon:icon.ico /out:TNFreelook.exe TNFreelook.cs
 ```
 
 ## How it works (short)
