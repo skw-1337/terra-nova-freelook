@@ -12,7 +12,7 @@ Keyboard controls are unchanged. No game file is modified.
 
 **Works with the Steam version** as well as GOG and standalone installs.
 
-> The same freelook is also part of **[Terra Nova Plus](https://github.com/skw-1337/terra-nova-plus)**, an all-in-one pack that adds noclip, a longer view distance, forced 320×400 and a true 16:9 widescreen mode.
+> The same freelook is also part of **[Terra Nova Plus](https://github.com/skw-1337/terra-nova-plus)**, an all-in-one pack with HD 1280x720 in true 16:9, noclip, a longer view distance, key remapping and bug fixes.
 
 ## What's new in v1.1
 
@@ -114,7 +114,7 @@ When several matches exist (DOS/4GW can leave an unrelocated copy of the exe in 
 
 ## See also
 
-**[Terra Nova Plus](https://github.com/skw-1337/terra-nova-plus)** — this freelook plus noclip, view distance, forced 320×400 and a 16:9 widescreen mode, chosen in a small menu before launching the game.
+**[Terra Nova Plus](https://github.com/skw-1337/terra-nova-plus)** — this freelook plus HD 1280x720 in true 16:9, noclip, view distance, key remapping and bug fixes, all set in one launcher window.
 
 ---
 
@@ -125,4 +125,4 @@ Vidéo de démonstration : https://www.youtube.com/watch?v=YUgYPfcOk7U
 Lancer `TNFreelook.exe`, lancer le jeu, puis **Y** en mission : souris gauche/droite = tourner, haut/bas = regarder, réticule fixe au centre. Se coupe tout seul avec `O` / `Échap` et en fin de mission. Réglages dans `TNFreelook.ini`. Aucun fichier du jeu n'est modifié ; code source fourni (`src/build.bat` pour recompiler, rien à installer).
 **Nouveautés v1.1** : plus de tremblement à l'arrêt, mouvements plus fluides, plus de traces du réticule sur le cockpit, pointeur gardé dans la fenêtre (double écran).
 **Anti-cheat** : l'outil ne touche qu'à DOSBox, mais fermez-le avant de jouer en ligne à des jeux protégés par un anti-cheat.
-Envie de plus ? **[Terra Nova Plus](https://github.com/skw-1337/terra-nova-plus)** ajoute noclip, distance de vue, 320×400 forcé et écran large 16:9.
+Envie de plus ? **[Terra Nova Plus](https://github.com/skw-1337/terra-nova-plus)** ajoute la HD 1280x720 en vrai 16:9, noclip, distance de vue, touches au choix et des correctifs.
