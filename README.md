@@ -10,6 +10,8 @@ In the original game the mouse only moves an aiming cursor. This small external 
 
 Keyboard controls are unchanged. No game file is modified.
 
+*Made with the help of Claude Code (an AI coding tool), mostly for reverse engineering the game and writing the code. Every change is tested in the real game before release.*
+
 **Works with the Steam version** as well as GOG and standalone installs.
 
 > The same freelook is also part of **[Terra Nova Plus](https://github.com/skw-1337/terra-nova-plus)**, an all-in-one pack with HD 1280x720 in true 16:9, noclip, a longer view distance, key remapping and bug fixes.
